@@ -1,0 +1,35 @@
+POST localhost:3001/alpha
+Content-Type: application/json
+
+{
+  "text": "What is the melting point of silver?"
+}
+
+###
+
+POST localhost:3002/stt
+Content-Type: application/json
+
+{
+  "speech": "`base64 -i speech.wav`"
+}
+
+###
+
+POST localhost:3003/tts
+Content-Type: application/json
+
+{
+  "text": "What is the melting point of silver?"
+}
+
+###
+
+POST localhost:3000/alexa
+Content-Type: application/json
+
+{
+  "speech": "`base64 -i speech.wav`"
+}
+
+###
