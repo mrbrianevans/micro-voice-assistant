@@ -9,13 +9,28 @@ import (
 )
 
 func Stt(w http.ResponseWriter, r *http.Request) {
-	res, _ := json.Marshal(map[string]string{"text": "What is the melting point of silver?"})
-	w.Write(res)
+	input := map[string]interface{}{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err == nil {
+		if speech, ok := input["speech"].(string); ok {
+			if text, err := MicrosoftSttService(speech); err == nil {
+				response := map[string]interface{}{"text": text}
+				w.Header().Set("content-type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(response)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
 }
 
-func MicrosoftSttService(text string) (string, error) {
+func MicrosoftSttService(speech string) (text string, err error) {
 
-	return "", nil
+	return " this is what you asked ", nil
 }
 func main() {
 	r := mux.NewRouter()

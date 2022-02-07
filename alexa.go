@@ -9,8 +9,23 @@ import (
 )
 
 func Alexa(w http.ResponseWriter, r *http.Request) {
-	res, _ := json.Marshal(map[string]string{"text": "What is the melting point of silver?"})
-	w.Write(res)
+	input := map[string]interface{}{}
+	if err := json.NewDecoder(r.Body).Decode(&input); err == nil {
+		if speech, ok := input["speech"].(string); ok {
+			if answer, err := AlexaService(speech); err == nil {
+				response := map[string]interface{}{"speech": answer}
+				w.Header().Set("content-type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(response)
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+	}
 }
 
 func AlphaService(text string) (string, error) {
@@ -24,6 +39,10 @@ func TtsService(text string) (string, error) {
 func SttService(text string) (string, error) {
 
 	return "", nil
+}
+
+func AlexaService(questionSpeech string) (answerSpeech string, err error) {
+	return "base64Encoded (answer.wav)", nil
 }
 func main() {
 	r := mux.NewRouter()
