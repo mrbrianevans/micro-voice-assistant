@@ -1,12 +1,25 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 )
+
+const (
+	REGION  = "uksouth"
+	STT_URI = "https://" + REGION + ".stt.speech.microsoft.com/" +
+		"speech/recognition/conversation/cognitiveservices/v1?" +
+		"language=en-US"
+)
+
+var MicrosoftKey = os.Getenv("MICROSOFT_KEY")
 
 func Stt(w http.ResponseWriter, r *http.Request) {
 	input := map[string]interface{}{}
@@ -29,9 +42,23 @@ func Stt(w http.ResponseWriter, r *http.Request) {
 }
 
 func MicrosoftSttService(speech string) (text string, err error) {
-
-	return " this is what you asked ", nil
+	client := &http.Client{}
+	speechBytes := base64.NewDecoder(&base64.Encoding{}, strings.NewReader(speech))
+	if req, err := http.NewRequest("POST", STT_URI, speechBytes); err == nil {
+		req.Header.Set("Content-Type", "audio/wav;codecs=audio/pcm;samplerate=16000")
+		req.Header.Set("Ocp-Apim-Subscription-Key", MicrosoftKey)
+		if rsp, err := client.Do(req); err == nil {
+			defer rsp.Body.Close()
+			if rsp.StatusCode == http.StatusOK {
+				if body, err := ioutil.ReadAll(rsp.Body); err == nil {
+					return string(body), nil
+				}
+			}
+		}
+	}
+	return "", err
 }
+
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/stt", Stt).Methods("POST")

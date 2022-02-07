@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -44,6 +43,7 @@ func WolframService(question string) (answer string, err error) {
 	fmt.Println("Requesting URL:", uri.String(), query.Encode())
 	if req, err := http.NewRequest("GET", uri.String(), nil); err == nil {
 		if rsp, err := client.Do(req); err == nil {
+			defer rsp.Body.Close()
 			if rsp.StatusCode == http.StatusOK {
 				if answer, err := ioutil.ReadAll(rsp.Body); err == nil {
 					return string(answer), nil
@@ -51,7 +51,7 @@ func WolframService(question string) (answer string, err error) {
 			}
 		}
 	}
-	return "", errors.New("WolframService")
+	return "", err
 }
 
 func main() {
