@@ -1,12 +1,12 @@
 # Micro Voice Assistant
-A voice assisstant built in Go using a microservices architecture.
+A voice assistant built in Go using a microservices architecture.
 
 ## Speech to text and text to speech
 [Microsoft Speech Service](https://docs.microsoft.com/en-gb/azure/cognitive-services/speech-service/)
 is used to convert user input speech to text and then convert the output text back to speech.
 
 ## Answer engine
-[Wolfram Alpha](https://products.wolframalpha.com/api/) is used to get answers to questions.
+[Wolfram Alpha Short Answers API](https://products.wolframalpha.com/short-answers-api/documentation/) is used to get answers to questions.
 
 ## Internal microservices
 All microservices respond to `POST` requests. 
@@ -60,3 +60,6 @@ Output example:
 ```json
 { "speech": "base64( wav )" }
 ```
+
+## Environment variables
+The alpha microservice requires the environment variable `WOLFRAM_KEY` to be set to a valid Wolfram|Alpha appid, available for free from the [Wolfram|Alpha Developer Portal](https://developer.wolframalpha.com/portal/).
