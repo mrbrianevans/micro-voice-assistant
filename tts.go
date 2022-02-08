@@ -36,6 +36,7 @@ type SSML struct {
 }
 
 func Tts(w http.ResponseWriter, r *http.Request) {
+	log.Println("Request to Tts")
 	input := map[string]interface{}{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err == nil {
 		if text, ok := input["text"].(string); ok {

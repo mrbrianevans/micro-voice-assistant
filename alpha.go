@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
@@ -15,6 +16,7 @@ var WolframKey = os.Getenv("WOLFRAM_KEY") // uses environment variable to avoid 
 var WolframUri = "http://api.wolframalpha.com/v1/result?appid=" + WolframKey
 
 func Alpha(w http.ResponseWriter, r *http.Request) {
+	log.Println("Request to AlexaService")
 	input := map[string]interface{}{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err == nil {
 		if question, ok := input["text"].(string); ok {
@@ -51,7 +53,7 @@ func WolframService(question string) (answer string, err error) {
 			}
 		}
 	}
-	return "", err
+	return "", errors.New("error while answering question with Wolfram|Alpha")
 }
 
 func main() {

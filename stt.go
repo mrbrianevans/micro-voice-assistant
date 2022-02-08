@@ -20,6 +20,7 @@ const (
 )
 
 func Stt(w http.ResponseWriter, r *http.Request) {
+	log.Println("Request to STT")
 	input := map[string]interface{}{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err == nil {
 		if speech, ok := input["speech"].(string); ok {
