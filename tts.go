@@ -1,23 +1,39 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 )
 
 // requires MICROSOFT_KEY environment variable to run
 const (
-	TTS_URI = "https://uksouth.stt.speech.microsoft.com/" +
-		"speech/recognition/conversation/cognitiveservices/v1?" +
-		"language=en-US"
+	TTS_URI = "https://uksouth.tts.speech.microsoft.com/cognitiveservices/v1"
 )
+
+type SsmlVoice struct {
+	XMLName  struct{} `xml:"voice"`
+	Language string   `xml:"xml:lang,attr"`
+	Gender   string   `xml:"xml:gender,attr"`
+	Name     string   `xml:"name,attr"`
+	Text     string   `xml:",chardata"`
+}
+
+// speech synthesis markup - format of xml request body to Microsoft
+type SSML struct {
+	XMLName  struct{} `xml:"speak"`
+	Version  string   `xml:"version,attr"`
+	Language string   `xml:"xml:lang,attr"`
+	Voice    SsmlVoice
+}
 
 func Tts(w http.ResponseWriter, r *http.Request) {
 	input := map[string]interface{}{}
@@ -41,22 +57,40 @@ func Tts(w http.ResponseWriter, r *http.Request) {
 
 func MicrosoftTtsService(text string) (speech string, err error) {
 	client := &http.Client{}
-	if req, err := http.NewRequest("POST", STT_URI, strings.NewReader(text)); err == nil {
+	ssml := SSML{
+		XMLName:  struct{}{},
+		Version:  "1.0",
+		Language: "en-US",
+		Voice: SsmlVoice{
+			XMLName:  struct{}{},
+			Language: "en-US",
+			Gender:   "Male",
+			Name:     "en-US-ChristopherNeural",
+			Text:     text,
+		},
+	}
+	xmlBytes, _ := xml.Marshal(ssml)
+	fmt.Println(string(xmlBytes))
+	if req, err := http.NewRequest("POST", TTS_URI, bytes.NewReader(xmlBytes)); err == nil {
 		req.Header.Set("Content-Type", "application/ssml+xml")
 		req.Header.Set("X-Microsoft-OutputFormat", "riff-16khz-16bit-mono-pcm")
 		req.Header.Set("Ocp-Apim-Subscription-Key", os.Getenv("MICROSOFT_KEY"))
 		if rsp, err := client.Do(req); err == nil {
 			defer rsp.Body.Close()
 			if rsp.StatusCode == http.StatusOK {
-				if speechBytes, err := ioutil.ReadAll(base64.NewDecoder(&base64.Encoding{}, rsp.Body)); err == nil {
-					return string(speechBytes), nil
+				if speechBytes, err := ioutil.ReadAll(rsp.Body); err == nil {
+					speechBase64 := base64.StdEncoding.EncodeToString(speechBytes)
+					return speechBase64, nil
 				}
 			}
 		}
 	}
-	return "", err
+	return "", errors.New("Text to speech error")
 }
 func main() {
+	if _, envSet := os.LookupEnv("MICROSOFT_KEY"); !envSet {
+		log.Fatal("Environment variable MICROSOFT_KEY not set. Required to access API")
+	}
 	r := mux.NewRouter()
 	r.HandleFunc("/tts", Tts).Methods("POST")
 	fmt.Println("Text to speech service running on localhost:3003")
