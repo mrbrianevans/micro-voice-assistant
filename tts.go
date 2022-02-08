@@ -70,7 +70,6 @@ func MicrosoftTtsService(text string) (speech string, err error) {
 		},
 	}
 	xmlBytes, _ := xml.Marshal(ssml)
-	fmt.Println(string(xmlBytes))
 	if req, err := http.NewRequest("POST", TTS_URI, bytes.NewReader(xmlBytes)); err == nil {
 		req.Header.Set("Content-Type", "application/ssml+xml")
 		req.Header.Set("X-Microsoft-OutputFormat", "riff-16khz-16bit-mono-pcm")

@@ -1,60 +1,72 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 )
 
 // requires MICROSOFT_KEY environment variable to run
 const (
 	STT_URI = "https://uksouth.stt.speech.microsoft.com/" +
 		"speech/recognition/conversation/cognitiveservices/v1?" +
-		"language=en-US"
+		"language=en-US&format=simple"
 )
 
 func Stt(w http.ResponseWriter, r *http.Request) {
 	input := map[string]interface{}{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err == nil {
 		if speech, ok := input["speech"].(string); ok {
-			if text, err := MicrosoftSttService(speech); err == nil {
-				response := map[string]interface{}{"text": text}
-				w.Header().Set("content-type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(response)
-			} else {
-				w.WriteHeader(http.StatusInternalServerError)
+			if speechBytes, err := base64.StdEncoding.DecodeString(speech); err == nil {
+				if text, err := MicrosoftSttService(speechBytes); err == nil {
+					response := map[string]interface{}{"text": text}
+					w.Header().Set("content-type", "application/json")
+					w.WriteHeader(http.StatusOK)
+					json.NewEncoder(w).Encode(response)
+				} else { // failed to convert speech to text
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+			} else { // base64 encoding is incorrect
+				w.WriteHeader(http.StatusBadRequest)
 			}
-		} else {
+		} else { // json request body doesn't contain "speech" key
 			w.WriteHeader(http.StatusBadRequest)
 		}
-	} else {
+	} else { // request body is not valid json
 		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
-func MicrosoftSttService(speech string) (text string, err error) {
+type MicrosoftRecognitionResponse struct {
+	RecognitionStatus string
+	DisplayText       string
+	Offset            int
+	Duration          int
+}
+
+func MicrosoftSttService(speech []byte) (text string, err error) {
 	client := &http.Client{}
-	speechBytes := base64.NewDecoder(&base64.Encoding{}, strings.NewReader(speech))
-	if req, err := http.NewRequest("POST", STT_URI, speechBytes); err == nil {
+	if req, err := http.NewRequest("POST", STT_URI, bytes.NewReader(speech)); err == nil {
 		req.Header.Set("Content-Type", "audio/wav;codecs=audio/pcm;samplerate=16000")
 		req.Header.Set("Ocp-Apim-Subscription-Key", os.Getenv("MICROSOFT_KEY"))
+		req.Header.Set("Accept", "application/json")
 		if rsp, err := client.Do(req); err == nil {
 			defer rsp.Body.Close()
 			if rsp.StatusCode == http.StatusOK {
-				if body, err := ioutil.ReadAll(rsp.Body); err == nil {
-					return string(body), nil
+				var response MicrosoftRecognitionResponse
+				if err := json.NewDecoder(rsp.Body).Decode(&response); err == nil {
+					return response.DisplayText, nil
 				}
 			}
 		}
 	}
-	return "", err
+	return "", errors.New("error while converting speech to text")
 }
 
 func main() {
